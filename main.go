@@ -1,29 +1,23 @@
 package main
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/sivsivsree/using-raft/block"
-	bolt "go.etcd.io/bbolt"
-	"log"
 )
 
 func main() {
 
-	db, err := bolt.Open("bolt.siv", 0666, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	bc := block.NewBlockchain()
 
-	chain, err := block.InitGenesis()
-	_, _ = block.AddNewBlock("Hello there")
-	_, _ = block.AddNewBlock("Hello therea")
-	_, _ = block.AddNewBlock("Hello thereaa")
-	_, _ = block.AddNewBlock("Hello thereaaa")
-	_, _ = block.AddNewBlock("Hello thereaaaa")
-	_, _ = block.AddNewBlock("Hello thereaaaaaa")
-	_, _ = block.AddNewBlock("Hello thereaaaaaaaaed")
+	bc.AddBlock("1")
+	bc.AddBlock("2+")
+	bc.AddBlock("asdfas")
 
-	defer db.Close()
+	//for _, b := range bc.Blocks {
+	//	fmt.Printf("Prev. hash: %x\n", b.PrevBlockHash)
+	//	fmt.Printf("Data: %s\n", b.Data)
+	//	fmt.Printf("Hash: %x\n", b.Hash)
+	//	fmt.Println()
+	//}
 
 	/*	err = db.Update(func(tx *bolt.Tx) error {
 			_, err := tx.CreateBucketIfNotExists([]byte("MyBucket"))
@@ -70,6 +64,8 @@ func main() {
 			prev = stats
 		}*/
 
-	spew.Dump(chain)
+	//spew.Dump(bc)
+
+	block.ViewAllFromStore()
 
 }
