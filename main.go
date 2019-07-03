@@ -8,9 +8,10 @@ func main() {
 
 	bc := block.NewBlockchain()
 
-	bc.AddBlock("1")
-	bc.AddBlock("2+")
-	bc.AddBlock("asdfas")
+	bc.AddBlock("ohooo")
+	//for i:= 0; i<100; i++ {
+	//	bc.AddBlock("data." + strconv.Itoa(i))
+	//}
 
 	//for _, b := range bc.Blocks {
 	//	fmt.Printf("Prev. hash: %x\n", b.PrevBlockHash)

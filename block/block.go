@@ -3,14 +3,18 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"github.com/sivsivsree/using-raft/logstore"
 	bolt "go.etcd.io/bbolt"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 )
+
+var mux = sync.Mutex{}
 
 type Block struct {
 	Pos           int
@@ -41,40 +45,108 @@ type Blockchain struct {
 
 func (bc *Blockchain) AddBlock(data string) {
 	// AddBlockToTheBucket
-	prevBlock := bc.Blocks[len(bc.Blocks)-1]
-	newBlock := NewBlock(data, prevBlock)
 
-	newBlockBytes, _ := json.Marshal(newBlock)
+	db := logstore.Open()
 
-	err := logstore.AddNewBlockToBucket(newBlock.Pos, newBlockBytes)
+	// key := strconv.Itoa(pos)
+	er := db.Update(func(tx *bolt.Tx) error {
 
-	if err != nil {
-		log.Fatal(err)
+		b := tx.Bucket([]byte("block"))
+
+		prevBlock := bc.Blocks[len(bc.Blocks)-1]
+		newBlock := NewBlock(data, prevBlock)
+
+		newBlockBytes, _ := json.Marshal(newBlock)
+
+		key := itob(newBlock.Pos)
+
+		err := b.Put([]byte(key), newBlockBytes)
+
+		bc.Blocks = append(bc.Blocks, newBlock)
+		return err
+	})
+
+	db.Close()
+
+	if er != nil {
+		log.Fatal(er)
 	}
-
-	bc.Blocks = append(bc.Blocks, newBlock)
 }
 
 func NewGenesisBlock() *Block {
 	// Add NewGenesis to the Block
+
+	db := logstore.Open()
+
 	pos := 0
 	genisis := &Block{pos, time.Now().Unix(), []byte("Geneisis"), []byte(""), []byte{}}
 	genisis.SetHash()
+
 	newBlockBytes, _ := json.Marshal(genisis)
-	err := logstore.AddNewBlockToBucket(0, newBlockBytes)
-	if err != nil {
-		log.Fatal(err)
+
+	// key := strconv.Itoa(pos)
+	er := db.Update(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("block"))
+
+		fmt.Println("NewGenesisBlock")
+
+		key := itob(genisis.Pos)
+		err := b.Put([]byte(key), newBlockBytes)
+
+		return err
+	})
+
+	db.Close()
+
+	if er != nil {
+		log.Fatal(er)
 	}
+
 	return genisis
+
 }
 
 func NewBlockchain() *Blockchain {
 	// createBucketIfNotExists
+
 	err := logstore.CreateBucketIfNotExist()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Blockchain{[]*Block{NewGenesisBlock()}}
+
+	// if data exists in genesis or not
+	bc := &Blockchain{[]*Block{}}
+	db := logstore.Open()
+
+	err = db.View(func(tx *bolt.Tx) error {
+
+		// Assume bucket exists and has keys
+		b := tx.Bucket([]byte("block"))
+
+		err = b.ForEach(func(k, v []byte) error {
+
+			var b Block
+			_ = json.Unmarshal(v, &b)
+
+			bc.Blocks = append(bc.Blocks, &b)
+
+			return nil
+		})
+		return err
+	})
+
+	db.Close()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(bc.Blocks) == 0 {
+		bc = &Blockchain{[]*Block{NewGenesisBlock()}}
+	}
+
+	return bc
 }
 
 func validBlock(block, prevBlock *Block) bool {
@@ -105,18 +177,17 @@ func (b *Block) validateHash(hash []byte) bool {
 
 func ViewAllFromStore() {
 	db := logstore.Open()
-	defer db.Close()
 
 	_ = db.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys
 		b := tx.Bucket([]byte("block"))
 
-		_ := b.ForEach(func(k, v []byte) error {
+		_ = b.ForEach(func(k, v []byte) error {
 
 			var b Block
-			json.Unmarshal(v, &b)
+			_ = json.Unmarshal(v, &b)
 
-			fmt.Printf("Pos: %x\n", b.Pos)
+			fmt.Printf("Pos: %d\n", b.Pos)
 			fmt.Printf("Prev. hash: %x\n", b.PrevBlockHash)
 			fmt.Printf("Data: %s\n", b.Data)
 			fmt.Printf("Hash: %x\n", b.Hash)
@@ -127,4 +198,12 @@ func ViewAllFromStore() {
 		})
 		return nil
 	})
+
+	db.Close()
+}
+
+func itob(v int) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(v))
+	return b
 }

@@ -3,7 +3,6 @@ package logstore
 import (
 	bolt "go.etcd.io/bbolt"
 	"log"
-	"strconv"
 )
 
 func Open() *bolt.DB {
@@ -24,17 +23,5 @@ func CreateBucketIfNotExist() error {
 			return err
 		}
 		return nil
-	})
-}
-
-func AddNewBlockToBucket(pos int, data []byte) error {
-
-	db := Open()
-	defer db.Close()
-	key := strconv.Itoa(pos)
-	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("block"))
-		err := b.Put([]byte(key), data)
-		return err
 	})
 }
