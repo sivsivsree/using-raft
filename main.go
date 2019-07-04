@@ -1,11 +1,18 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/sivsivsree/using-raft/block"
 )
 
 func main() {
 
+	port := flag.Int("port", 700, "Service port")
+
+	flag.Parse()
+
+	fmt.Println(port)
 	bc := block.NewBlockchain()
 
 	bc.AddBlock("ohooo")
@@ -67,6 +74,6 @@ func main() {
 
 	//spew.Dump(bc)
 
-	block.ViewAllFromStore()
+	//block.ViewAllFromStore()
 
 }
