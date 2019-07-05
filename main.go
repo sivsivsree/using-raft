@@ -1,21 +1,23 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/sivsivsree/using-raft/block"
+	"net/http"
 )
 
 func main() {
 
-	port := flag.Int("port", 700, "Service port")
+	port := flag.String("port", "7000", "Service port")
 
 	flag.Parse()
 
-	fmt.Println(port)
+	fmt.Println(*port)
 	bc := block.NewBlockchain()
 
-	bc.AddBlock("ohooo")
 	//for i:= 0; i<100; i++ {
 	//	bc.AddBlock("data." + strconv.Itoa(i))
 	//}
@@ -76,4 +78,24 @@ func main() {
 
 	//block.ViewAllFromStore()
 
+	r := mux.NewRouter()
+
+	r.HandleFunc("/add/{data}", func(writer http.ResponseWriter, request *http.Request) {
+
+		vars := mux.Vars(request)
+		data := vars["data"]
+		bc.AddBlock(data)
+
+		json.NewEncoder(writer).Encode(bc.Blocks)
+
+	}).Methods("GET")
+
+	r.HandleFunc("/get", func(writer http.ResponseWriter, request *http.Request) {
+		block.ViewAllFromStore()
+
+		json.NewEncoder(writer).Encode(bc.Blocks)
+
+	}).Methods("GET")
+
+	http.ListenAndServe(fmt.Sprintf(":%s", *port), r)
 }

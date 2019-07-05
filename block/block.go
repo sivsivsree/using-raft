@@ -19,14 +19,14 @@ var mux = sync.Mutex{}
 type Block struct {
 	Pos           int
 	Timestamp     int64
-	Data          []byte
+	Data          string
 	PrevBlockHash []byte
 	Hash          []byte
 }
 
 func (b *Block) SetHash() {
 	timestamp := []byte(strconv.FormatInt(b.Timestamp, 10))
-	headers := bytes.Join([][]byte{b.PrevBlockHash, b.Data, timestamp}, []byte{})
+	headers := bytes.Join([][]byte{b.PrevBlockHash, []byte(b.Data), timestamp}, []byte{})
 	hash := sha256.Sum256(headers)
 
 	b.Hash = hash[:]
@@ -34,7 +34,7 @@ func (b *Block) SetHash() {
 
 func NewBlock(data string, prevBlock *Block) *Block {
 	pos := prevBlock.Pos + 1
-	block := &Block{pos, time.Now().Unix(), []byte(data), prevBlock.Hash, []byte{}}
+	block := &Block{pos, time.Now().Unix(), data, prevBlock.Hash, []byte{}}
 	block.SetHash()
 	return block
 }
@@ -79,10 +79,10 @@ func NewGenesisBlock() *Block {
 	db := logstore.Open()
 
 	pos := 0
-	genisis := &Block{pos, time.Now().Unix(), []byte("Geneisis"), []byte(""), []byte{}}
-	genisis.SetHash()
+	genesis := &Block{pos, time.Now().Unix(), "Geneisis", []byte(""), []byte{}}
+	genesis.SetHash()
 
-	newBlockBytes, _ := json.Marshal(genisis)
+	newBlockBytes, _ := json.Marshal(genesis)
 
 	// key := strconv.Itoa(pos)
 	er := db.Update(func(tx *bolt.Tx) error {
@@ -91,7 +91,7 @@ func NewGenesisBlock() *Block {
 
 		fmt.Println("NewGenesisBlock")
 
-		key := itob(genisis.Pos)
+		key := itob(genesis.Pos)
 		err := b.Put([]byte(key), newBlockBytes)
 
 		return err
@@ -103,7 +103,7 @@ func NewGenesisBlock() *Block {
 		log.Fatal(er)
 	}
 
-	return genisis
+	return genesis
 
 }
 
